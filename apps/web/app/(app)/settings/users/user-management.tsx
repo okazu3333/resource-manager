@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { inviteUser } from '@/lib/actions/auth'
 import { updateUserRole, toggleUserActive } from '@/lib/actions/users'
 import { toast } from 'sonner'
-import type { Profile } from '@se-worktime/database'
+import type { Profile } from '@/types'
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: 'スーパーユーザー',

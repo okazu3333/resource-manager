@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createProject, updateProject } from '@/lib/actions/projects'
 import { toast } from 'sonner'
-import type { Project } from '@se-worktime/database'
+import type { Project } from '@/types'
 
 interface ProjectFormProps {
   project?: Project

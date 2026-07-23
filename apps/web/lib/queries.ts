@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Profile, Project, TimeEntry, ActiveTimer } from '@se-worktime/database'
+import type { Profile, Project, TimeEntry, ActiveTimer } from '@/types'
 
 // ジョイン型の定義
 export type TimeEntryWithRelations = TimeEntry & {

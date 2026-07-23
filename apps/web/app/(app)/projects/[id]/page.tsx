@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatDuration, formatPercent } from '@/lib/utils'
 import { archiveProject } from '@/lib/actions/projects'
 import { toast } from 'sonner'
-import type { Project, TimeEntry, Profile } from '@se-worktime/database'
+import type { Project, TimeEntry, Profile } from '@/types'
 
 const STATUS_LABEL: Record<string, string> = {
   active: '進行中',

@@ -13,7 +13,7 @@ import {
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Profile } from '@se-worktime/database'
+import type { Profile } from '@/types'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 const navItems = [

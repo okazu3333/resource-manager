@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { startTimer, stopTimer } from '@/lib/actions/time-entries'
-import { WORK_CATEGORIES } from '@se-worktime/database'
+import { WORK_CATEGORIES } from '@/types'
 import { toast } from 'sonner'
-import type { Project, ActiveTimer } from '@se-worktime/database'
+import type { Project, ActiveTimer } from '@/types'
 
 function formatElapsed(seconds: number): string {
   const h = Math.floor(seconds / 3600).toString().padStart(2, '0')

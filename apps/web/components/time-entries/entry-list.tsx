@@ -9,7 +9,7 @@ import { formatDuration, getDayOfWeek } from '@/lib/utils'
 import { deleteTimeEntry } from '@/lib/actions/time-entries'
 import { EntryForm } from './entry-form'
 import { toast } from 'sonner'
-import type { TimeEntry, Project, Profile } from '@se-worktime/database'
+import type { TimeEntry, Project, Profile } from '@/types'
 
 type EntryWithRelations = TimeEntry & {
   project: Pick<Project, 'id' | 'name' | 'type'> | null

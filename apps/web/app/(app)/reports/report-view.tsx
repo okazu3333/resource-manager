@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { formatDuration, getDayOfWeek } from '@/lib/utils'
-import type { Project, Profile, TimeEntry } from '@se-worktime/database'
+import type { Project, Profile, TimeEntry } from '@/types'
 
 type EntryWithRelations = TimeEntry & {
   project: Pick<Project, 'id' | 'name' | 'type'> | null

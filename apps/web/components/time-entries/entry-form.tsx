@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createTimeEntry, updateTimeEntry } from '@/lib/actions/time-entries'
-import { WORK_CATEGORIES } from '@se-worktime/database'
+import { WORK_CATEGORIES } from '@/types'
 import { toast } from 'sonner'
 import { todayJst } from '@/lib/utils'
-import type { Project, TimeEntry } from '@se-worktime/database'
+import type { Project, TimeEntry } from '@/types'
 
 const MINUTE_OPTIONS = [0, 15, 30, 45]
 

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { updateProfile, updatePassword } from '@/lib/actions/users'
 import { toast } from 'sonner'
-import type { Profile } from '@se-worktime/database'
+import type { Profile } from '@/types'
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
