@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProjectForm } from '@/components/projects/project-form'
+import { TaskPanel } from '@/components/tasks/task-panel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatDuration, formatPercent } from '@/lib/utils'
 import { archiveProject } from '@/lib/actions/projects'
 import { toast } from 'sonner'
-import type { Project, TimeEntry, Profile } from '@/types'
+import type { Project, TimeEntry, Profile, Task } from '@/types'
 
 const STATUS_LABEL: Record<string, string> = {
   active: '進行中',
@@ -28,36 +29,42 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [project, setProject] = useState<Project & { consumed_hours: number } | null>(null)
-  const [entries, setEntries] = useState<(TimeEntry & { profile: Pick<Profile, 'name'> })[]>([])
+  const [entries, setEntries] = useState<(TimeEntry & { profile: Pick<Profile, 'name'>; task: Pick<Task, 'name'> | null })[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [myRole, setMyRole] = useState<string>('member')
   const [showEdit, setShowEdit] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const backlogEnabled = !!process.env.NEXT_PUBLIC_BACKLOG_SPACE_ID
 
   useEffect(() => {
     const supabase = createClient()
 
     async function load() {
-      const [{ data: proj }, { data: ents }, { data: { user } }] = await Promise.all([
+      const [{ data: proj }, { data: ents }, { data: tasksData }, { data: { user } }] = await Promise.all([
         supabase.from('projects').select('*').eq('id', id).single(),
         supabase
           .from('time_entries')
-          .select('*, profile:profiles(name)')
+          .select('*, profile:profiles(name), task:tasks(name)')
           .eq('project_id', id)
           .is('deleted_at', null)
           .order('date', { ascending: false }),
+        supabase
+          .from('tasks')
+          .select('*')
+          .eq('project_id', id)
+          .order('created_at', { ascending: true }),
         supabase.auth.getUser(),
       ])
 
       if (!proj) { router.push('/projects'); return }
 
       const consumed = (ents ?? []).reduce((sum: number, e: any) => sum + e.duration_hours, 0)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setProject({ ...(proj as any), consumed_hours: consumed })
       setEntries((ents ?? []) as any)
+      setTasks((tasksData ?? []) as any)
 
       if (user) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setMyRole((profile as any)?.role ?? 'member')
       }
     }
@@ -95,7 +102,7 @@ export default function ProjectDetailPage() {
       {/* ヘッダー */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold">{project.name}</h1>
             <Badge variant="outline">{TYPE_LABEL[project.type]}</Badge>
           </div>
@@ -103,15 +110,8 @@ export default function ProjectDetailPage() {
         </div>
         {isAdmin && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}>
-              編集
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleArchive}
-              disabled={isPending}
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}>編集</Button>
+            <Button variant="outline" size="sm" onClick={handleArchive} disabled={isPending}>
               {project.archived ? 'アーカイブ解除' : 'アーカイブ'}
             </Button>
           </div>
@@ -121,9 +121,7 @@ export default function ProjectDetailPage() {
       {/* 予実管理 */}
       {project.budget_hours && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">予実管理</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-base">予実管理</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
@@ -149,11 +147,9 @@ export default function ProjectDetailPage() {
               <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
-                    budgetPercent! >= 100
-                      ? 'bg-destructive'
-                      : budgetPercent! >= 80
-                        ? 'bg-yellow-500'
-                        : 'bg-primary'
+                    budgetPercent! >= 100 ? 'bg-destructive'
+                    : budgetPercent! >= 80  ? 'bg-yellow-500'
+                    : 'bg-primary'
                   }`}
                   style={{ width: `${budgetPercent}%` }}
                 />
@@ -163,11 +159,17 @@ export default function ProjectDetailPage() {
         </Card>
       )}
 
+      {/* タスク */}
+      <TaskPanel
+        projectId={id}
+        tasks={tasks}
+        isAdmin={isAdmin}
+        backlogEnabled={backlogEnabled}
+      />
+
       {/* 案件情報 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">案件情報</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">案件情報</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
           {project.start_date && (
             <div className="flex gap-4">
@@ -202,12 +204,15 @@ export default function ProjectDetailPage() {
             <div className="space-y-1">
               {entries.map(entry => (
                 <div key={entry.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground mr-2">{entry.date}</span>
-                    <span className="mr-2">{(entry as any).profile?.name}</span>
+                  <div className="text-sm flex items-center gap-2 flex-wrap">
+                    <span className="text-muted-foreground">{entry.date}</span>
+                    <span>{(entry as any).profile?.name}</span>
+                    {(entry as any).task && (
+                      <Badge variant="outline" className="text-xs">{(entry as any).task.name}</Badge>
+                    )}
                     {entry.description && <span className="text-muted-foreground">{entry.description}</span>}
                   </div>
-                  <span className="text-sm font-mono">{formatDuration(entry.duration_hours)}</span>
+                  <span className="text-sm font-mono shrink-0">{formatDuration(entry.duration_hours)}</span>
                 </div>
               ))}
             </div>
@@ -218,9 +223,7 @@ export default function ProjectDetailPage() {
       {/* 編集ダイアログ */}
       <Dialog open={showEdit} onOpenChange={setShowEdit}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>案件を編集</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>案件を編集</DialogTitle></DialogHeader>
           <ProjectForm project={project} onSuccess={() => { setShowEdit(false); router.refresh() }} />
         </DialogContent>
       </Dialog>

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "SE稼働管理",
+  "version": "0.1.0",
+  "description": "SE稼働管理システム - タイマー拡張機能",
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SE稼働管理",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

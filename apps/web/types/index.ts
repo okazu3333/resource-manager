@@ -1,6 +1,7 @@
 export type UserRole = 'super_admin' | 'admin' | 'member'
 export type ProjectType = 'project' | 'approval'
 export type ProjectStatus = 'active' | 'completed' | 'suspended'
+export type TaskStatus = 'open' | 'in_progress' | 'closed'
 export type WorkCategory =
   | '生産稼働（開発）'
   | '保守稼働（調査/問合せ対応）'
@@ -42,12 +43,24 @@ export interface Project {
   updated_at: string
 }
 
+export interface Task {
+  id: string
+  project_id: string
+  name: string
+  backlog_issue_key: string | null
+  backlog_issue_url: string | null
+  status: TaskStatus
+  created_at: string
+  updated_at: string
+}
+
 export interface TimeEntry {
   id: string
   user_id: string
   date: string
   work_category: WorkCategory
   project_id: string | null
+  task_id: string | null
   description: string | null
   started_at: string | null
   ended_at: string | null
@@ -61,4 +74,5 @@ export interface ActiveTimer {
   user_id: string
   started_at: string
   project_id: string | null
+  task_id: string | null
 }
