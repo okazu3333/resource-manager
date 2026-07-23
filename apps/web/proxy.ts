@@ -25,20 +25,20 @@ export async function proxy(request: NextRequest) {
     },
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // getSession() はネットワーク呼び出し不要でローカル JWT 検証のみ
+  // ※ 信頼性が必要な箇所（Server Action/Route Handler）では getUser() を使う
+  const { data: { session } } = await supabase.auth.getSession()
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/auth')
+  const pathname = request.nextUrl.pathname
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/auth')
 
-  if (!user && !isAuthPage) {
+  if (!session && !isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && isAuthPage) {
+  if (session && isAuthPage && !pathname.startsWith('/auth')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

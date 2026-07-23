@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile, Project, TimeEntry, ActiveTimer } from '@/types'
 
@@ -18,7 +19,8 @@ export type ProjectWithStats = Project & {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cast = <T>(v: any): T => v as T
 
-export async function getCurrentUser(): Promise<Profile | null> {
+// cache() はリクエスト単位でメモ化 → layout と page で二重呼び出しされても DB アクセスは1回
+export const getCurrentUser = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -30,7 +32,7 @@ export async function getCurrentUser(): Promise<Profile | null> {
     .single()
 
   return cast<Profile | null>(data)
-}
+})
 
 export async function getActiveTimer(): Promise<ActiveTimerWithProject | null> {
   const supabase = await createClient()
