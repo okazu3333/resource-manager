@@ -56,7 +56,7 @@ export function Sidebar({ profile }: { profile: Profile }) {
 
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} className={linkClass(href)}>
+          <Link key={href} href={href} prefetch={true} className={linkClass(href)}>
             <Icon className="h-4 w-4 shrink-0" />
             {label}
           </Link>
@@ -68,7 +68,7 @@ export function Sidebar({ profile }: { profile: Profile }) {
               <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider">管理</p>
             </div>
             {adminItems.map(({ href, label, icon: Icon }) => (
-              <Link key={href} href={href} className={linkClass(href)}>
+              <Link key={href} href={href} prefetch={true} className={linkClass(href)}>
                 <Icon className="h-4 w-4 shrink-0" />
                 {label}
               </Link>
