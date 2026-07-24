@@ -1,21 +1,15 @@
-// バックグラウンドサービスワーカー
-// タイマー経過時間の更新 & バッジ表示
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
 
 chrome.alarms.create('tick', { periodInMinutes: 1 / 60 })
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== 'tick') return
 
-  const { access_token } = await chrome.storage.local.get('access_token')
+  const { access_token, user_id } = await chrome.storage.local.get(['access_token', 'user_id'])
   if (!access_token) {
     chrome.action.setBadgeText({ text: '' })
     return
   }
-
-  const { user_id } = await chrome.storage.local.get('user_id')
   if (!user_id) return
 
   try {

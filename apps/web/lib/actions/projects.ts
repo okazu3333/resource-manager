@@ -65,5 +65,6 @@ export async function archiveProject(id: string, archived: boolean) {
   if (error) return { error: error.message }
 
   revalidatePath('/projects')
+  revalidatePath(`/projects/${id}`)
   return { success: true }
 }

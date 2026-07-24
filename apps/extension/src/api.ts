@@ -93,10 +93,10 @@ export async function stopTimer(workCategory: string, description: string) {
 
   const startedAt = new Date(timer.started_at)
   const now = new Date()
-  const diffMin = (now.getTime() - startedAt.getTime()) / 60000
-  // 15分単位に丸める
-  const roundedMin = Math.round(diffMin / 15) * 15
-  const durationHours = Math.max(0.25, roundedMin / 60)
+  const diffMs = now.getTime() - startedAt.getTime()
+  // 15分単位切り上げ（最低1ブロック=15分）
+  const blocks = Math.max(1, Math.ceil((diffMs / 60000) / 15))
+  const durationHours = blocks * 0.25
 
   // タイムエントリを作成
   await req('/rest/v1/time_entries', {

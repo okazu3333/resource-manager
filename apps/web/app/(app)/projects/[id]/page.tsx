@@ -1,18 +1,10 @@
-'use client'
-
-import { useEffect, useState, useTransition } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { ProjectForm } from '@/components/projects/project-form'
+import { redirect } from 'next/navigation'
+import { getCurrentUser, getProjectWithStats, getProjectEntries, getProjectTasks } from '@/lib/queries'
 import { TaskPanel } from '@/components/tasks/task-panel'
+import { ProjectActions } from '@/components/projects/project-actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDuration, formatPercent } from '@/lib/utils'
-import { archiveProject } from '@/lib/actions/projects'
-import { toast } from 'sonner'
-import type { Project, TimeEntry, Profile, Task } from '@/types'
 
 const STATUS_LABEL: Record<string, string> = {
   active: '進行中',
@@ -25,77 +17,41 @@ const TYPE_LABEL: Record<string, string> = {
   approval: '都度稟議案件',
 }
 
-export default function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const router = useRouter()
-  const [project, setProject] = useState<Project & { consumed_hours: number } | null>(null)
-  const [entries, setEntries] = useState<(TimeEntry & { profile: Pick<Profile, 'name'>; task: Pick<Task, 'name'> | null })[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [myRole, setMyRole] = useState<string>('member')
-  const [showEdit, setShowEdit] = useState(false)
-  const [isPending, startTransition] = useTransition()
+export default async function ProjectDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+
+  const [profile, project, entries, tasks] = await Promise.all([
+    getCurrentUser(),
+    getProjectWithStats(id),
+    getProjectEntries(id),
+    getProjectTasks(id),
+  ])
+
+  if (!profile) redirect('/login')
+  if (!project) redirect('/projects')
+
+  const isAdmin = profile.role === 'super_admin' || profile.role === 'admin'
   const backlogEnabled = !!process.env.NEXT_PUBLIC_BACKLOG_SPACE_ID
-
-  useEffect(() => {
-    const supabase = createClient()
-
-    async function load() {
-      const [{ data: proj }, { data: ents }, { data: tasksData }, { data: { user } }] = await Promise.all([
-        supabase.from('projects').select('*').eq('id', id).single(),
-        supabase
-          .from('time_entries')
-          .select('*, profile:profiles(name), task:tasks(name)')
-          .eq('project_id', id)
-          .is('deleted_at', null)
-          .order('date', { ascending: false }),
-        supabase
-          .from('tasks')
-          .select('*')
-          .eq('project_id', id)
-          .order('created_at', { ascending: true }),
-        supabase.auth.getUser(),
-      ])
-
-      if (!proj) { router.push('/projects'); return }
-
-      const consumed = (ents ?? []).reduce((sum: number, e: any) => sum + e.duration_hours, 0)
-      setProject({ ...(proj as any), consumed_hours: consumed })
-      setEntries((ents ?? []) as any)
-      setTasks((tasksData ?? []) as any)
-
-      if (user) {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-        setMyRole((profile as any)?.role ?? 'member')
-      }
-    }
-
-    load()
-  }, [id, router])
-
-  const isAdmin = myRole === 'super_admin' || myRole === 'admin'
-
-  async function handleArchive() {
-    if (!project) return
-    const msg = project.archived ? 'アーカイブを解除しますか？' : 'この案件をアーカイブしますか？'
-    if (!confirm(msg)) return
-    startTransition(async () => {
-      const result = await archiveProject(id, !project.archived)
-      if (result?.error) {
-        toast.error(result.error)
-      } else {
-        toast.success(project.archived ? 'アーカイブを解除しました' : 'アーカイブしました')
-        router.push('/projects')
-      }
-    })
-  }
-
-  if (!project) {
-    return <div className="p-6 text-muted-foreground">読み込み中...</div>
-  }
 
   const budgetPercent = project.budget_hours
     ? Math.min((project.consumed_hours / project.budget_hours) * 100, 100)
     : null
+
+  // メンバー別集計
+  const byMember = entries.reduce<Record<string, { name: string; hours: number }>>(
+    (acc, e) => {
+      const pid = e.profile.id
+      if (!acc[pid]) acc[pid] = { name: e.profile.name, hours: 0 }
+      acc[pid].hours += e.duration_hours
+      return acc
+    },
+    {},
+  )
+  const memberRows = Object.values(byMember).sort((a, b) => b.hours - a.hours)
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
@@ -108,14 +64,7 @@ export default function ProjectDetailPage() {
           </div>
           <Badge>{STATUS_LABEL[project.status]}</Badge>
         </div>
-        {isAdmin && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}>編集</Button>
-            <Button variant="outline" size="sm" onClick={handleArchive} disabled={isPending}>
-              {project.archived ? 'アーカイブ解除' : 'アーカイブ'}
-            </Button>
-          </div>
-        )}
+        {isAdmin && <ProjectActions project={project} />}
       </div>
 
       {/* 予実管理 */}
@@ -159,6 +108,29 @@ export default function ProjectDetailPage() {
         </Card>
       )}
 
+      {/* メンバー別稼働 */}
+      {memberRows.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">メンバー別稼働</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {memberRows.map(m => (
+                <div key={m.name} className="flex items-center gap-3">
+                  <span className="text-sm w-32 truncate">{m.name}</span>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full"
+                      style={{ width: `${(m.hours / project.consumed_hours) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-mono w-16 text-right">{formatDuration(m.hours)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* タスク */}
       <TaskPanel
         projectId={id}
@@ -195,7 +167,9 @@ export default function ProjectDetailPage() {
       {/* 稼働記録 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">稼働記録（合計: {formatDuration(project.consumed_hours)}）</CardTitle>
+          <CardTitle className="text-base">
+            稼働記録（合計: {formatDuration(project.consumed_hours)}）
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {entries.length === 0 ? (
@@ -206,11 +180,13 @@ export default function ProjectDetailPage() {
                 <div key={entry.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
                   <div className="text-sm flex items-center gap-2 flex-wrap">
                     <span className="text-muted-foreground">{entry.date}</span>
-                    <span>{(entry as any).profile?.name}</span>
-                    {(entry as any).task && (
-                      <Badge variant="outline" className="text-xs">{(entry as any).task.name}</Badge>
+                    <span>{entry.profile.name}</span>
+                    {entry.task && (
+                      <Badge variant="outline" className="text-xs">{entry.task.name}</Badge>
                     )}
-                    {entry.description && <span className="text-muted-foreground">{entry.description}</span>}
+                    {entry.description && (
+                      <span className="text-muted-foreground">{entry.description}</span>
+                    )}
                   </div>
                   <span className="text-sm font-mono shrink-0">{formatDuration(entry.duration_hours)}</span>
                 </div>
@@ -219,14 +195,6 @@ export default function ProjectDetailPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* 編集ダイアログ */}
-      <Dialog open={showEdit} onOpenChange={setShowEdit}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>案件を編集</DialogTitle></DialogHeader>
-          <ProjectForm project={project} onSuccess={() => { setShowEdit(false); router.refresh() }} />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

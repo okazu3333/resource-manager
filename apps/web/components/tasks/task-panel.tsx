@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useMemo, useTransition } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,8 +86,8 @@ export function TaskPanel({ projectId, tasks, isAdmin, backlogEnabled }: TaskPan
     })
   }
 
-  const openTasks = tasks.filter(t => t.status !== 'closed')
-  const closedTasks = tasks.filter(t => t.status === 'closed')
+  const openTasks = useMemo(() => tasks.filter(t => t.status !== 'closed'), [tasks])
+  const closedTasks = useMemo(() => tasks.filter(t => t.status === 'closed'), [tasks])
 
   return (
     <Card>
@@ -161,7 +161,7 @@ export function TaskPanel({ projectId, tasks, isAdmin, backlogEnabled }: TaskPan
             )}
 
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="ghost" onClick={() => { setShowAdd(false); setTaskName(''); setSelectedIssue(null) }}>
+              <Button size="sm" variant="ghost" onClick={() => { setShowAdd(false); setTaskName(''); setSelectedIssue(null); setBacklogKeyword(''); setBacklogResults([]) }}>
                 キャンセル
               </Button>
               <Button size="sm" onClick={handleCreate} disabled={!taskName.trim() || isPending}>

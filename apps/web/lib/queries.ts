@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile, Project, TimeEntry, ActiveTimer } from '@/types'
+import type { Profile, Project, TimeEntry, ActiveTimer, Task } from '@/types'
 
 // ジョイン型の定義
 export type TimeEntryWithRelations = TimeEntry & {
@@ -14,6 +14,11 @@ export type ActiveTimerWithProject = ActiveTimer & {
 
 export type ProjectWithStats = Project & {
   consumed_hours: number
+}
+
+export type ProjectEntry = TimeEntry & {
+  profile: Pick<Profile, 'id' | 'name'>
+  task: Pick<Task, 'id' | 'name'> | null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,6 +121,27 @@ export async function getProjectWithStats(id: string): Promise<ProjectWithStats 
     .reduce((sum, e) => sum + e.duration_hours, 0)
 
   return { ...project, consumed_hours: consumed }
+}
+
+export async function getProjectEntries(projectId: string): Promise<ProjectEntry[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('time_entries')
+    .select('*, profile:profiles(id, name), task:tasks(id, name)')
+    .eq('project_id', projectId)
+    .is('deleted_at', null)
+    .order('date', { ascending: false })
+  return cast<ProjectEntry[]>(data ?? [])
+}
+
+export async function getProjectTasks(projectId: string): Promise<Task[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+  return cast<Task[]>(data ?? [])
 }
 
 export async function getAllProfiles(): Promise<Profile[]> {

@@ -1,5 +1,11 @@
 'use server'
 
+function buildBacklogIssueUrl(issueKey: string): string {
+  const spaceId = process.env.BACKLOG_SPACE_ID
+  if (!spaceId) return ''
+  return `https://${spaceId}.backlog.com/view/${issueKey}`
+}
+
 export interface BacklogIssue {
   id: number
   issueKey: string
@@ -38,7 +44,7 @@ export async function searchBacklogIssues(keyword: string, projectKey?: string):
       summary: issue.summary,
       status: issue.status,
       assignee: issue.assignee,
-      url: `https://${spaceId}.backlog.com/view/${issue.issueKey}`,
+      url: buildBacklogIssueUrl(issue.issueKey),
     }))
   } catch {
     return []
