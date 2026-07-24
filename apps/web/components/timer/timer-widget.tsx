@@ -45,7 +45,7 @@ export function TimerWidget({ initialTimer, projects }: TimerWidgetProps) {
     if (result?.error) {
       toast.error(result.error)
     } else {
-      setTimer({ user_id: '', started_at: new Date().toISOString(), project_id: null, project: null })
+      setTimer({ user_id: '', started_at: new Date().toISOString(), project_id: null, task_id: null, project: null })
     }
     setLoading(false)
   }, [])
@@ -137,10 +137,23 @@ export function TimerWidget({ initialTimer, projects }: TimerWidgetProps) {
               <Label>作業内容</Label>
               <Input name="description" placeholder="作業内容を入力（任意）" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              計測時間: <span className="font-mono font-bold">{formatElapsed(elapsed)}</span>
-              （15分単位で自動丸め）
-            </p>
+            <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">計測時間</span>
+                <span className="font-mono font-bold">{formatElapsed(elapsed)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">記録時間（15分単位切上げ）</span>
+                <span className="font-mono font-bold text-primary">
+                  {(() => {
+                    const blocks = Math.max(1, Math.ceil(elapsed / 900))
+                    const h = Math.floor(blocks * 15 / 60)
+                    const m = (blocks * 15) % 60
+                    return `${h > 0 ? h + 'h ' : ''}${m}m`
+                  })()}
+                </span>
+              </div>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowStopDialog(false)}>
                 キャンセル

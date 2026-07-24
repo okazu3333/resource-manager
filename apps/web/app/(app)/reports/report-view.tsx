@@ -83,16 +83,21 @@ export function ReportView({
   }
 
   function handleCsvExport() {
-    const header = ['名前', '日付', '曜日', '稼働分類', 'PJ/サービス', '内容', '稼働実績(h)']
-    const rows = entries.map(e => [
-      e.profile.name,
-      e.date.replace(/-/g, '/'),
-      getDayOfWeek(e.date),
-      e.work_category,
-      e.project?.name ?? '-',
-      e.description ?? '',
-      e.duration_hours,
-    ])
+    const header = ['名前', '日付', '曜日', '稼働分類', 'PJ/サービス', '内容', '稼働実績(h)', '稼働実績(分)', '工数']
+    const rows = entries.map(e => {
+      const totalMin = Math.round(e.duration_hours * 60)
+      return [
+        e.profile.name,
+        e.date.replace(/-/g, '/'),
+        getDayOfWeek(e.date),
+        e.work_category,
+        e.project?.name ?? '-',
+        e.description ?? '',
+        e.duration_hours,
+        totalMin,
+        e.duration_hours.toFixed(2),
+      ]
+    })
     const csv = [header, ...rows]
       .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
       .join('\n')

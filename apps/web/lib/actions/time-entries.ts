@@ -16,13 +16,15 @@ export async function createTimeEntry(formData: FormData) {
 
   if (durationHours <= 0) return { error: '稼働時間を入力してください' }
 
-  const projectId = formData.get('project_id') as string | null
+  const projectId = (formData.get('project_id') as string) || null
+  const taskId = (formData.get('task_id') as string) || null
 
   const { error } = await supabase.from('time_entries').insert({
     user_id: user.id,
     date: formData.get('date') as string,
     work_category: formData.get('work_category') as string,
-    project_id: projectId || null,
+    project_id: projectId,
+    task_id: taskId,
     description: (formData.get('description') as string) || null,
     duration_hours: durationHours,
   })
@@ -46,14 +48,16 @@ export async function updateTimeEntry(id: string, formData: FormData) {
 
   if (durationHours <= 0) return { error: '稼働時間を入力してください' }
 
-  const projectId = formData.get('project_id') as string | null
+  const projectId = (formData.get('project_id') as string) || null
+  const taskId = (formData.get('task_id') as string) || null
 
   const { error } = await supabase
     .from('time_entries')
     .update({
       date: formData.get('date') as string,
       work_category: formData.get('work_category') as string,
-      project_id: projectId || null,
+      project_id: projectId,
+      task_id: taskId,
       description: (formData.get('description') as string) || null,
       duration_hours: durationHours,
     })
@@ -119,10 +123,12 @@ export async function stopTimer(formData: FormData) {
   const startedAt = new Date(timer.started_at)
   const endedAt = new Date()
   const diffMs = endedAt.getTime() - startedAt.getTime()
-  // 15分単位に丸める
-  const durationHours = Math.max(0.25, Math.round((diffMs / 3600000) * 4) / 4)
+  // 15分単位に切り上げ（実際の経過時間を尊重、最低1ブロック=15分）
+  const blocks = Math.max(1, Math.ceil((diffMs / 60000) / 15))
+  const durationHours = blocks * 0.25
 
   const projectId = (formData.get('project_id') as string) || timer.project_id || null
+  const taskId = (formData.get('task_id') as string) || timer.task_id || null
   const dateStr = startedAt.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
 
   const { error: insertError } = await supabase.from('time_entries').insert({
@@ -130,6 +136,7 @@ export async function stopTimer(formData: FormData) {
     date: dateStr,
     work_category: formData.get('work_category') as string,
     project_id: projectId,
+    task_id: taskId,
     description: (formData.get('description') as string) || null,
     started_at: timer.started_at,
     ended_at: endedAt.toISOString(),
